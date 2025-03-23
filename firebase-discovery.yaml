@@ -6,7 +6,7 @@ info:
   severity: info
   description: Detects various Firebase services and configurations.
   metadata:
-    max-request: 20 # Increased max-request
+    max-request: 20 
   tags: firebase, misconfig, detection
 
 variables:
@@ -21,8 +21,8 @@ http:
     path:
       - "https://{{project}}-default-rtdb.firebaseio.com/.json"
       - "https://{{project}}-default-rtdb.firebaseio.com/.settings/rules.json"
-      - "https://{{project}}.firebaseio.com/.json" # Added general case
-      - "https://{{project}}.firebaseio.com/.settings/rules.json" # Added general case
+      - "https://{{project}}.firebaseio.com/.json" 
+      - "https://{{project}}.firebaseio.com/.settings/rules.json" 
       - "https://{{project}}.firebasedatabaseio.com/.lp?start=t" #long polling
       - "https://{{project}}.firebasedatabaseio.com/.ws?v=5" #web sockets
 
