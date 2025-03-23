@@ -1,0 +1,217 @@
+id: firebase-discovery
+
+info:
+  name: Firebase Services Detection
+  author: "CypherNova1337"
+  severity: info
+  description: Detects various Firebase services and configurations.
+  metadata:
+    max-request: 20 # Increased max-request
+  tags: firebase, misconfig, detection
+
+variables:
+  full_domain: "{{BaseURL}}"
+  project: "{{full_domain}}"
+  # If BaseURL is a full domain (e.g., launchpad.tempus-ex.com),
+  # this transformation should be done manually before running Nuclei.
+
+http:
+  - name: Firebase Realtime Database Rules
+    method: GET
+    path:
+      - "https://{{project}}-default-rtdb.firebaseio.com/.json"
+      - "https://{{project}}-default-rtdb.firebaseio.com/.settings/rules.json"
+      - "https://{{project}}.firebaseio.com/.json" # Added general case
+      - "https://{{project}}.firebaseio.com/.settings/rules.json" # Added general case
+      - "https://{{project}}.firebasedatabaseio.com/.lp?start=t" #long polling
+      - "https://{{project}}.firebasedatabaseio.com/.ws?v=5" #web sockets
+
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"rules":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Hosting (web.app/firebaseapp.com)
+    method: GET
+    path:
+      - "https://{{project}}.web.app/"
+      - "https://{{project}}.firebaseapp.com/"
+    matchers-condition: or
+    matchers:
+      - type: regex
+        regex:
+          - '<title>.*(Firebase|Google Firebase).*</title>'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 404
+
+  - name: Firebase Storage Bucket
+    method: GET
+    path:
+      - "https://firebasestorage.googleapis.com/v0/b/{{project}}/"
+      - "https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"kind": "storage#bucket"'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Firestore Documents
+    method: GET
+    path:
+      - "https://firestore.googleapis.com/v1/projects/{{project}}/databases/(default)/documents/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"documents":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Cloud Functions
+    method: GET
+    path:
+      - "https://{{project}}.cloudfunctions.net/"
+      - "https://us-central1-{{project}}.cloudfunctions.net/"
+      - "https://europe-west1-{{project}}.cloudfunctions.net/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - 'cloudfunctions.net'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 404
+
+  - name: Firebase App Check
+    method: GET
+    path:
+      - "https://appcheck.googleapis.com/v1/projects/{{project}}/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"appCheckToken":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Recaptcha
+    method: GET
+    path:
+      - "https://recaptchaenterprise.googleapis.com/v1/projects/{{project}}/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"recaptchaToken":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Identity Toolkit
+    method: GET
+    path:
+      - "https://identitytoolkit.googleapis.com/v1/projects/{{project}}/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"idToken":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Instance ID
+    method: GET
+    path:
+      - "https://iid.googleapis.com/v1/projects/{{project}}/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"iidToken":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase FCM
+    method: GET
+    path:
+      - "https://fcm.googleapis.com/v1/projects/{{project}}/"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"fcmToken":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Dynamic Links
+    method: GET
+    path:
+      - "https://dynamiclinks.googleapis.com/v1/shortLinks?key="
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"shortLink":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+
+  - name: Firebase Installations
+    method: GET
+    path:
+      - "https://{{project}}.firebaseinstallations.googleapis.com/v1/projects/{{project}}/installations"
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - '"installationToken":'
+        part: body
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
