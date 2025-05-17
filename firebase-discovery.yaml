@@ -1,19 +1,15 @@
 id: firebase-discovery
-
 info:
   name: Firebase Services Detection
   author: "CypherNova1337"
   severity: info
-  description: Detects various Firebase services and configurations.
+  description: Detects various Firebase services using a project ID (derived from hostname if a domain is given). Excludes 404s/generic 400s and extracts status codes.
   metadata:
-    max-request: 20 
+    max-request: 20
   tags: firebase, misconfig, detection
 
 variables:
-  full_domain: "{{BaseURL}}"
-  project: "{{full_domain}}"
-  # If BaseURL is a full domain (e.g., launchpad.tempus-ex.com),
-  # this transformation should be done manually before running Nuclei.
+  project: "{{Hostname}}"
 
 http:
   - name: Firebase Realtime Database Rules
@@ -21,197 +17,253 @@ http:
     path:
       - "https://{{project}}-default-rtdb.firebaseio.com/.json"
       - "https://{{project}}-default-rtdb.firebaseio.com/.settings/rules.json"
-      - "https://{{project}}.firebaseio.com/.json" 
-      - "https://{{project}}.firebaseio.com/.settings/rules.json" 
-      - "https://{{project}}.firebasedatabaseio.com/.lp?start=t" #long polling
-      - "https://{{project}}.firebasedatabaseio.com/.ws?v=5" #web sockets
-
-    matchers-condition: or
+      - "https://{{project}}.firebaseio.com/.json"
+      - "https://{{project}}.firebaseio.com/.settings/rules.json"
+      - "https://{{project}}.firebasedatabaseio.com/.lp?start=t"
+      - "https://{{project}}.firebasedatabaseio.com/.ws?v=5"
+      - "https://{{project}}-android.firebaseio.com/.json"
+      - "https://{{project}}-archive.firebaseio.com/.json"
+      - "https://{{project}}-dev.firebaseio.com/.json"
+      - "https://{{project}}-development.firebaseio.com/.json"
+      - "https://{{project}}-mobile.firebaseio.com/.json"
+      - "https://{{project}}-prod.firebaseio.com/.json"
+      - "https://{{project}}-production.firebaseio.com/.json"
+      - "https://{{project}}-project.firebaseio.com/.json"
+      - "https://{{project}}-reports.firebaseio.com/.json"
+      - "https://{{project}}-security.firebaseio.com/.json"
+      - "https://{{project}}-stage.firebaseio.com/.json"
+      - "https://{{project}}-staging.firebaseio.com/.json"
+      - "https://{{project}}-test.firebaseio.com/.json"
+      - "https://{{project}}-testing.firebaseio.com/.json"
+      - "https://{{project}}-uat.firebaseio.com/.json"
+      - "https://cloud-{{project}}.firebaseio.com/.json"
+      - "https://dev-{{project}}.firebaseio.com/.json"
+      - "https://prod-{{project}}.firebaseio.com/.json"
+      - "https://stage-{{project}}.firebaseio.com/.json"
+      - "https://test-{{project}}.firebaseio.com/.json"
+      - "https://{{project}}ios.firebaseio.com/.json"
+      - "https://{{project}}stats.firebaseio.com/.json"
+      - "https://{{project}}-dev.firebaseio.com/.settings/rules.json"
+      - "https://test-{{project}}.firebaseio.com/.settings/rules.json"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"rules":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "\"rules\":") || contains(body, "permission_denied") || contains(body, "\"error\"")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
   - name: Firebase Hosting (web.app/firebaseapp.com)
     method: GET
     path:
       - "https://{{project}}.web.app/"
       - "https://{{project}}.firebaseapp.com/"
-    matchers-condition: or
+    matchers-condition: and
     matchers:
-      - type: regex
-        regex:
-          - '<title>.*(Firebase|Google Firebase).*</title>'
-        part: body
       - type: status
-        status:
-          - 200
-          - 404
+        status: [404] 
+        negative: true
+      - type: dsl
+        dsl:
+          - 'status_code == 200 || regex(body, "<title>.*(Firebase|Google Firebase).*</title>") || regex(body, "Firebase Hosting")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
   - name: Firebase Storage Bucket
     method: GET
     path:
-      - "https://firebasestorage.googleapis.com/v0/b/{{project}}/"
-      - "https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/"
-    matchers-condition: or
+      - "https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/o"
+      - "https://firebasestorage.googleapis.com/v0/b/{{project}}/o"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"kind": "storage#bucket"'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "\"error\":") || contains(body, "\"kind\": \"storage#objects\"") || contains(body, "\"name\": \"{{project}}.appspot.com\"")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase Firestore Documents
+  - name: Firebase Firestore Documents (Test Collection)
     method: GET
     path:
-      - "https://firestore.googleapis.com/v1/projects/{{project}}/databases/(default)/documents/"
-    matchers-condition: or
+      - "https://firestore.googleapis.com/v1/projects/{{project}}/databases/(default)/documents/test"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"documents":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "\"documents\":") || contains(body, "Missing or insufficient permissions.") || contains(body, "UNAUTHENTICATED")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase Cloud Functions
+  - name: Firebase Cloud Functions (Region Check)
     method: GET
     path:
-      - "https://{{project}}.cloudfunctions.net/"
       - "https://us-central1-{{project}}.cloudfunctions.net/"
       - "https://europe-west1-{{project}}.cloudfunctions.net/"
-    matchers-condition: or
+      - "https://asia-east1-{{project}}.cloudfunctions.net/"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - 'cloudfunctions.net'
-        part: body
       - type: status
-        status:
-          - 200
-          - 404
+        status: [404] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "Error: Forbidden") || contains(body, "NOT_FOUND") || regex(body, "<title>Google Cloud Functions</title>")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase App Check
+  - name: Firebase App Check (Generic API Endpoint Check)
     method: GET
     path:
-      - "https://appcheck.googleapis.com/v1/projects/{{project}}/"
-    matchers-condition: or
+      - "https://firebaseappcheck.googleapis.com/v1beta/projects/{{project}}/apps"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"appCheckToken":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "\"apps\":") || contains(body, "\"error\":")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase Recaptcha
+  - name: Firebase Recaptcha Enterprise (Generic API Endpoint Check)
     method: GET
     path:
-      - "https://recaptchaenterprise.googleapis.com/v1/projects/{{project}}/"
-    matchers-condition: or
+      - "https://recaptchaenterprise.googleapis.com/v1beta1/projects/{{project}}/keys"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"recaptchaToken":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "\"keys\":") || contains(body, "\"error\":")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase Identity Toolkit
+  - name: Firebase Identity Toolkit (Generic API Endpoint Check)
     method: GET
     path:
-      - "https://identitytoolkit.googleapis.com/v1/projects/{{project}}/"
-    matchers-condition: or
+      - "https://identitytoolkit.googleapis.com/v2/projects/{{project}}/config"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"idToken":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "clientConfig") || contains(body, "\"error\":")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase Instance ID
+  - name: Firebase Instance ID (API Deprecated - Check for related services)
     method: GET
     path:
-      - "https://iid.googleapis.com/v1/projects/{{project}}/"
-    matchers-condition: or
+      - "https://iid.googleapis.com/iid/v1:batchImport"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"iidToken":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 401 || status_code == 403 || status_code == 405) || (contains(body, "INVALID_ARGUMENT") && contains(body, "UNAUTHENTICATED"))'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase FCM
-    method: GET
+  - name: Firebase Cloud Messaging (FCM Send Test - Generic API Check)
+    method: POST
     path:
-      - "https://fcm.googleapis.com/v1/projects/{{project}}/"
-    matchers-condition: or
+      - "https://fcm.googleapis.com/fcm/send"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "key=invalid_key_test"
+    body: '{"to": "invalid_token"}'
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"fcmToken":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 401) || contains(body, "InvalidRegistration") || contains(body, "MissingRegistration")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
   - name: Firebase Dynamic Links
     method: GET
     path:
-      - "https://dynamiclinks.googleapis.com/v1/shortLinks?key="
-    matchers-condition: or
+      - "https://{{project}}.page.link"
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"shortLink":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 200 || status_code == 301 || status_code == 302) || contains(body, "Dynamic Link") || contains(body, "AppPreview") || contains(body, "เปิดลิงก์นี้ในแอป")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
 
-  - name: Firebase Installations
-    method: GET
+  - name: Firebase Installations (Generic API Endpoint Check)
+    method: POST
     path:
-      - "https://{{project}}.firebaseinstallations.googleapis.com/v1/projects/{{project}}/installations"
-    matchers-condition: or
+      - "https://firebaseinstallations.googleapis.com/v1/projects/{{project}}/installations"
+    headers:
+      Content-Type: "application/json"
+    body: '{"appId": "1:1234567890:android:0a1b2c3d4e5f6789", "sdkVersion": "t:1"}'
+    matchers-condition: and
     matchers:
-      - type: word
-        words:
-          - '"installationToken":'
-        part: body
       - type: status
-        status:
-          - 200
-          - 400
-          - 404
+        status: [404, 400] 
+        negative: true
+      - type: dsl
+        dsl:
+          - '(status_code == 401 || status_code == 403) || contains(body, "\"error\":") || contains(body, "INVALID_ARGUMENT") || contains(body, "UNAUTHENTICATED")'
+    extractors:
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
