@@ -1,114 +1,83 @@
-# Nuclei Firebase Discovery Template with httpx Validation
-**The Most Comprehensive Firebase Scan For Nuclei**
-  
-This repository contains a Nuclei template `firebase-discovery.yaml` designed to detect various Firebase services and configurations in web applications. It also provides instructions on using `httpx` to validate the results.
+# Nuclei Firebase Discovery Template (Enhanced)
+**A Comprehensive and Precise Firebase Service Scan for Nuclei**
+
+This repository contains an advanced Nuclei template, `firebase-discovery.yaml`, meticulously designed to detect a wide array of Firebase services and configurations associated with a target project. This updated version incorporates stricter matching logic and provides more informative output.
 
 ## Template Description
 
-The `firebase-discovery.yaml` template scans target URLs for common Firebase Realtime Database, Firestore, Storage, Hosting, Cloud Functions, and other related endpoints. It uses Nuclei's matching capabilities to identify potential Firebase services.
+The `firebase-discovery.yaml` template intelligently scans for common Firebase services including Realtime Database (with numerous common naming variants), Firestore, Cloud Storage, Hosting, Cloud Functions, and various other Firebase/Google Cloud Platform (GCP) API endpoints linked to a Firebase project. It employs a robust matching strategy, combining negative status checks with positive DSL-based conditions (status codes and body/header content) to ensure higher accuracy and reduce false positives. Extracted HTTP status codes are now also included in the findings.
 
 ## Features
 
-* **Comprehensive Firebase Detection:** Detects a wide range of Firebase services.
-* **Nuclei Template:** Provides a Nuclei template for automated scanning.
-* **httpx Validation:** Includes instructions on using `httpx` to verify status codes and content lengths.
-* **Clear Output:** Designed to be easily understood and analyzed.
+* **Comprehensive Firebase Detection:** Identifies a broad spectrum of Firebase services and related API endpoints.
+* **Precise Matching Logic:** Utilizes `matchers-condition: and` with negative status filters and specific DSL conditions to minimize false positives and confirm findings more reliably.
+* **Status Code in Output:** Findings now include the HTTP status code of the response, aiding in quicker analysis (e.g., `[status=403]`).
+* **Dynamic Project ID Handling:** Designed to take a direct Firebase Project ID as input for accurate targeting.
+* **Extensive Path Coverage:** Includes numerous common variants for services like Firebase Realtime Database.
 
 ## Usage
 
-1.  **Install Nuclei:** Make sure you have Nuclei installed on your system. You can find installation instructions on the [Nuclei GitHub repository](https://github.com/projectdiscovery/nuclei).
+1.  **Install Nuclei:** Ensure Nuclei is installed. Instructions are on the [Nuclei GitHub repository](https://github.com/projectdiscovery/nuclei).
 
-2.  **Install httpx:** Ensure you have `httpx` installed. If not, you can install it using `go`:
+2.  **Obtain the Template:**
+    * If you've cloned this repository (e.g., `git clone https://github.com/SKHTW/Firebase_Nuclei.git` and `cd Firebase_Nuclei`) you'll have `firebase-discovery.yaml`.
+    * Otherwise, ensure you have the latest version of `firebase-discovery.yaml`.
 
+3.  **Run the Nuclei Template (Recommended Method):**
+    The template is designed to take the **direct Firebase Project ID** as input.
     ```bash
-    go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+    nuclei -t firebase-discovery.yaml -u <YOUR_FIREBASE_PROJECT_ID>
     ```
-
-3.  **Clone the Repository:** Clone this repository to your local machine:
-
-    ```bash
-    git clone https://github.com/SKHTW/Firebase_Nuclei.git
-    cd Firebase_Nuclei
-    ```
-
-4.  **Run the Nuclei Template:** Use the following command to run the Nuclei template:
-
-    ```bash
-    nuclei -u target_url -t firebase-discovery.yaml -var project=target_project
-    ```
-
-    * Replace `target_url` with the URL you want to scan (e.g., `https://thisisthedomain.com`).
-    * Replace `target_project` with the project name or identifier you are using for the `{{project}}` variable (e.g., `thisisthedomain`). Sometimes the project name for a client and their firebase info can be something else, so try to figure out thier project name if it differs.
-
-5.  **Validate with httpx:**
-
-    * Create a file named `urls.txt` containing the URLs from the Nuclei template's `path` sections, replacing `{{project}}` with the appropriate value.
-    * Example `urls.txt`:
-
-        ```text
-        https://example-default-rtdb.firebaseio.com/.json
-        https://example.web.app/
-        https://firebasestorage.googleapis.com/v0/b/example/
-        # ... and so on
-        ```
-
-    * Run `httpx` to check status codes and content lengths:
-
+    * Replace `<YOUR_FIREBASE_PROJECT_ID>` with the actual Firebase Project ID (e.g., `google.com = google`, `facebook.com = facebook`).
+    * The template's `variables` section uses `project: "{{Hostname}}"` which will correctly use this direct input.
+    * Add `-v` for verbose output to see all attempted requests:
         ```bash
-        httpx -l urls.txt -status-code -content-length 2>&1 
+        nuclei -t firebase-discovery.yaml -u <YOUR_FIREBASE_PROJECT_ID> -v
         ```
 
-    * Compare the `httpx` output with the Nuclei output. This will help you verify the accuracy of the template.
+4.  **Analyze Results:**
+    Nuclei will output findings, which will now include the HTTP status code (e.g., `[status=403]`). Analyze these to understand the exposed Firebase footprint.
 
-6.  **Analyze the Results:** Nuclei will output any detected Firebase endpoints or patterns. Analyze the results to identify potential vulnerabilities.
+## Template Details (Illustrative Examples of Checks)
 
-## Template Details
-
-The template performs the following checks:
+The template performs checks for a wide range of Firebase/GCP services. The `{{project}}` variable will be the Firebase Project ID you provide.
 
 * **Firebase Realtime Database:**
-    * `https://{{project}}-default-rtdb.firebaseio.com/.json`
-    * `https://{{project}}-default-rtdb.firebaseio.com/.settings/rules.json`
-    * `https://{{project}}.firebaseio.com/.json`
-    * `https://{{project}}.firebaseio.com/.settings/rules.json`
-    * `https://{{project}}.firebasedatabaseio.com/.lp?start=t`
-    * `https://{{project}}.firebasedatabaseio.com/.ws?v=5`
+    * Checks numerous permutations like `https://{{project}}.firebaseio.com/.json`, `https://{{project}}-default-rtdb.firebaseio.com/.json`, `https://{{project}}-dev.firebaseio.com/.json`, `https://dev-{{project}}.firebaseio.com/.json`, `https://{{project}}ios.firebaseio.com/.json`, and their corresponding `.settings/rules.json` paths.
 * **Firebase Hosting:**
     * `https://{{project}}.web.app/`
     * `https://{{project}}.firebaseapp.com/`
 * **Firebase Storage:**
-    * `https://firebasestorage.googleapis.com/v0/b/{{project}}/`
-    * `https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/`
+    * `https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/o` (default bucket convention)
+    * `https://firebasestorage.googleapis.com/v0/b/{{project}}/o` (project ID as bucket name)
 * **Firebase Firestore:**
-    * `https://firestore.googleapis.com/v1/projects/{{project}}/databases/(default)/documents/`
+    * `https://firestore.googleapis.com/v1/projects/{{project}}/databases/(default)/documents/test` (attempts to list a test collection)
 * **Firebase Cloud Functions:**
-    * `https://{{project}}.cloudfunctions.net/`
-    * `https://us-central1-{{project}}.cloudfunctions.net/`
-    * `https://europe-west1-{{project}}.cloudfunctions.net/`
+    * Checks regional endpoints like `https://us-central1-{{project}}.cloudfunctions.net/`, `https://europe-west1-{{project}}.cloudfunctions.net/`, etc.
 * **Firebase App Check:**
-    * `https://appcheck.googleapis.com/v1/projects/{{project}}/`
-* **Firebase Recaptcha:**
-    * `https://recaptchaenterprise.googleapis.com/v1/projects/{{project}}/`
+    * `https://firebaseappcheck.googleapis.com/v1beta/projects/{{project}}/apps`
+* **Firebase Recaptcha Enterprise:**
+    * `https://recaptchaenterprise.googleapis.com/v1beta1/projects/{{project}}/keys`
 * **Firebase Identity Toolkit:**
-    * `https://identitytoolkit.googleapis.com/v1/projects/{{project}}/`
-* **Firebase Instance ID:**
-    * `https://iid.googleapis.com/v1/projects/{{project}}/`
-* **Firebase FCM:**
-    * `https://fcm.googleapis.com/v1/projects/{{project}}/`
+    * `https://identitytoolkit.googleapis.com/v2/projects/{{project}}/config`
+* **Firebase Instance ID (Deprecated API):**
+    * `https://iid.googleapis.com/iid/v1:batchImport` (Static path, checks for API presence)
+* **Firebase Cloud Messaging (FCM):**
+    * `https://fcm.googleapis.com/fcm/send` (Static path, POST request to test endpoint)
 * **Firebase Dynamic Links:**
-    * `https://dynamiclinks.googleapis.com/v1/shortLinks?key=`
+    * `https://{{project}}.page.link`
 * **Firebase Installations:**
-    * `https://{{project}}.firebaseinstallations.googleapis.com/v1/projects/{{project}}/installations`
+    * `https://firebaseinstallations.googleapis.com/v1/projects/{{project}}/installations` (POST request)
 
-The template checks for specific keywords in the response body, regular expressions in the response body, and HTTP status codes to identify Firebase services.
+The template uses a combination of negative status code filtering and DSL expressions (checking for specific status codes like 200, 401, 403, 405 or content in the response body/headers) to identify these services.
 
 ## Important Notes
 
-* This template is designed for detection purposes. Further analysis is required to identify actual vulnerabilities.
-* Be aware that this template might produce false positives.
-* Always obtain proper authorization before scanning any target.
-* Use this tool responsibly and ethically.
-* Combine this tool with JavaScript analysis and manual testing.
+* **Purpose:** This template is for detection and reconnaissance. Further manual analysis is required to determine actual vulnerabilities or misconfigurations.
+* **Accuracy:** While designed to be more precise, always verify findings. The nature of Firebase means some services might be intentionally public or protected as expected.
+* **Authorization:** **Always obtain proper authorization before scanning any target.**
+* **Ethical Use:** Use this tool responsibly and ethically.
+* **Further Investigation:** For deep analysis, combine Nuclei results with manual testing, analysis of client-side JavaScript code (which often reveals Firebase project configurations), and other reconnaissance techniques.
 
 ## Contributing
 
