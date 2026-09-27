@@ -5,7 +5,7 @@ info:
   severity: info
   description: Detects various Firebase services using a project ID (derived from hostname if a domain is given). Excludes 404s/generic 400s and extracts status codes.
   metadata:
-    max-request: 20
+    max-request: 43
   tags: firebase, misconfig, detection
 
 variables:
@@ -19,8 +19,8 @@ http:
       - "https://{{project}}-default-rtdb.firebaseio.com/.settings/rules.json"
       - "https://{{project}}.firebaseio.com/.json"
       - "https://{{project}}.firebaseio.com/.settings/rules.json"
-      - "https://{{project}}.firebasedatabaseio.com/.lp?start=t"
-      - "https://{{project}}.firebasedatabaseio.com/.ws?v=5"
+      - "https://{{project}}.firebaseio.com/.lp?start=t"
+      - "https://{{project}}.firebaseio.com/.ws?v=5"
       - "https://{{project}}-android.firebaseio.com/.json"
       - "https://{{project}}-archive.firebaseio.com/.json"
       - "https://{{project}}-dev.firebaseio.com/.json"
@@ -82,6 +82,7 @@ http:
     method: GET
     path:
       - "https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/o"
+      - "https://firebasestorage.googleapis.com/v0/b/{{project}}.firebasestorage.app/o"
       - "https://firebasestorage.googleapis.com/v0/b/{{project}}/o"
     matchers-condition: and
     matchers:
@@ -183,64 +184,6 @@ http:
       - type: dsl
         dsl:
           - '(status_code == 200 || status_code == 401 || status_code == 403) || contains(body, "clientConfig") || contains(body, "\"error\":")'
-    extractors:
-      - type: dsl
-        name: status
-        dsl:
-          - "status_code"
-
-  - name: Firebase Instance ID (API Deprecated - Check for related services)
-    method: GET
-    path:
-      - "https://iid.googleapis.com/iid/v1:batchImport"
-    matchers-condition: and
-    matchers:
-      - type: status
-        status: [404, 400] 
-        negative: true
-      - type: dsl
-        dsl:
-          - '(status_code == 401 || status_code == 403 || status_code == 405) || (contains(body, "INVALID_ARGUMENT") && contains(body, "UNAUTHENTICATED"))'
-    extractors:
-      - type: dsl
-        name: status
-        dsl:
-          - "status_code"
-
-  - name: Firebase Cloud Messaging (FCM Send Test - Generic API Check)
-    method: POST
-    path:
-      - "https://fcm.googleapis.com/fcm/send"
-    headers:
-      Content-Type: "application/json"
-      Authorization: "key=invalid_key_test"
-    body: '{"to": "invalid_token"}'
-    matchers-condition: and
-    matchers:
-      - type: status
-        status: [404, 400] 
-        negative: true
-      - type: dsl
-        dsl:
-          - '(status_code == 200 || status_code == 401) || contains(body, "InvalidRegistration") || contains(body, "MissingRegistration")'
-    extractors:
-      - type: dsl
-        name: status
-        dsl:
-          - "status_code"
-
-  - name: Firebase Dynamic Links
-    method: GET
-    path:
-      - "https://{{project}}.page.link"
-    matchers-condition: and
-    matchers:
-      - type: status
-        status: [404] 
-        negative: true
-      - type: dsl
-        dsl:
-          - '(status_code == 200 || status_code == 301 || status_code == 302) || contains(body, "Dynamic Link") || contains(body, "AppPreview") || contains(body, "เปิดลิงก์นี้ในแอป")'
     extractors:
       - type: dsl
         name: status

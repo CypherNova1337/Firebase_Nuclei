@@ -20,7 +20,7 @@ The `firebase-discovery.yaml` template intelligently scans for common Firebase s
 1.  **Install Nuclei:** Ensure Nuclei is installed. Instructions are on the [Nuclei GitHub repository](https://github.com/projectdiscovery/nuclei).
 
 2.  **Obtain the Template:**
-    * If you've cloned this repository (e.g., `git clone https://github.com/SKHTW/Firebase_Nuclei.git` and `cd Firebase_Nuclei`) you'll have `firebase-discovery.yaml`.
+    * If you've cloned this repository (e.g., `git clone https://github.com/CypherNova1337/Firebase_Nuclei.git` and `cd Firebase_Nuclei`) you'll have `firebase-discovery.yaml`.
     * Otherwise, ensure you have the latest version of `firebase-discovery.yaml`.
 
 3.  **Run the Nuclei Template (Recommended Method):**
@@ -48,7 +48,8 @@ The template performs checks for a wide range of Firebase/GCP services. The `{{p
     * `https://{{project}}.web.app/`
     * `https://{{project}}.firebaseapp.com/`
 * **Firebase Storage:**
-    * `https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/o` (default bucket convention)
+    * `https://firebasestorage.googleapis.com/v0/b/{{project}}.appspot.com/o` (legacy default bucket convention)
+    * `https://firebasestorage.googleapis.com/v0/b/{{project}}.firebasestorage.app/o` (default bucket for projects created after Oct 2024)
     * `https://firebasestorage.googleapis.com/v0/b/{{project}}/o` (project ID as bucket name)
 * **Firebase Firestore:**
     * `https://firestore.googleapis.com/v1/projects/{{project}}/databases/(default)/documents/test` (attempts to list a test collection)
@@ -60,16 +61,18 @@ The template performs checks for a wide range of Firebase/GCP services. The `{{p
     * `https://recaptchaenterprise.googleapis.com/v1beta1/projects/{{project}}/keys`
 * **Firebase Identity Toolkit:**
     * `https://identitytoolkit.googleapis.com/v2/projects/{{project}}/config`
-* **Firebase Instance ID (Deprecated API):**
-    * `https://iid.googleapis.com/iid/v1:batchImport` (Static path, checks for API presence)
-* **Firebase Cloud Messaging (FCM):**
-    * `https://fcm.googleapis.com/fcm/send` (Static path, POST request to test endpoint)
-* **Firebase Dynamic Links:**
-    * `https://{{project}}.page.link`
 * **Firebase Installations:**
     * `https://firebaseinstallations.googleapis.com/v1/projects/{{project}}/installations` (POST request)
 
 The template uses a combination of negative status code filtering and DSL expressions (checking for specific status codes like 200, 401, 403, 405 or content in the response body/headers) to identify these services.
+
+## Removed / Deprecated Checks
+
+The following checks were retired because the underlying Google services have been shut down and no longer return useful signal:
+
+* **Firebase Dynamic Links** (`*.page.link`) — service shut down by Google on August 25, 2025.
+* **Firebase Cloud Messaging legacy HTTP API** (`fcm.googleapis.com/fcm/send`) — shut down in June 2024 (superseded by the OAuth-only HTTP v1 API, which is not useful for unauthenticated recon).
+* **Instance ID `batchImport`** (`iid.googleapis.com`) — tied to the retired legacy FCM stack.
 
 ## Important Notes
 
